@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+/* CSS goes here. */
+.sa2 :hover {
+  fill-opacity: .8;
+}
+
+.sa2-boundaries {
+  fill: none;
+  stroke: #777;
+  stroke-width: .1;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+</style>
+<body>
+<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="https://d3js.org/d3-geo.v1.min.js"></script>
+<script src="https://d3js.org/topojson.v3.min.js"></script>
+<script>
+var width = 960,
+  height = 1160;
+
+var svg = d3.select("body").append("svg")
+  .attr("width", width)
+  .attr("height", height);
+
+var projection = d3.geo.conicConformal()
+  .rotate([-132, 0])
+  .center([0, 0])
+  .parallels([-18, -36])
+  .scale(Math.min(height * 1.2, width * 0.8))
+  .translate([width / 2, 0])
+  .precision(0.1);
+  console.log(projection.scale())
+
+var path = d3.geoPath().projection(projection);
+
+var col_range_low = "#fff5f0",
+  col_range_high = "#67000d";
+
+var color = d3.scale.linear()
+  .range([col_range_low,col_range_high])
+  .domain([0.3,0.7])
+  .interpolate(d3.interpolateLab);
+
+console.log(color)
+
+/* JavaScript goes here. */
+d3.csv("sa2-gini.csv", function(sa2data){
+  d3.json("aus_fixed.json", function(error, aus){
+    if (error) throw error;
+
+    /* Loop through variables */
+    for(var s=0; s<sa2data.length; s++){
+      var csv_sa2 = sa2data[s].sa2_code
+      var csv_sa2_gini = sa2data[s].sa2_gini
+      var count = aus.objects.sa2.geometries.length;
+      for(var j=0; j<count; j++){
+        var json_sa2 = aus.objects.sa2.geometries[j].properties.SA2_MAIN16
+        if(json_sa2==csv_sa2){
+          aus.objects.sa2.geometries[j].properties.STE_GINI = csv_sa2_gini
+        }
+      }
+    }
+
+    console.log(aus.objects.sa2.geometries)
+
+    svg.append("g")
+      .attr("class","sa2")
+      .selectAll("path")
+      .data(topojson.feature(aus, aus.objects.sa2).features)
+      .enter().append("path")
+      .attr("d", path)
+      .style("fill", function(d) {
+        return color(d.properties.STE_GINI);
+      });
+
+    svg.append("path")
+      .attr("class","sa2-boundaries")
+      .attr("d", path(topojson.mesh(aus, aus.objects.sa2)));
+  });
+});
+
+</script>
